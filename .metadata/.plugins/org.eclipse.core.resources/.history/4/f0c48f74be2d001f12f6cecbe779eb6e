@@ -1,0 +1,7 @@
+package com.app.prommonitor.entity;
+
+@Entity
+@Table(name="Books")
+public class BooksEntity {
+
+}

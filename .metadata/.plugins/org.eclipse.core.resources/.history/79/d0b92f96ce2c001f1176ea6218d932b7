@@ -1,0 +1,6 @@
+package com.app.prommonitor.controller;
+
+@RestController
+public class AppController {
+
+}

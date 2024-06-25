@@ -1,0 +1,5 @@
+package com.app.prommonitor.beans;
+
+public class Book {
+
+}

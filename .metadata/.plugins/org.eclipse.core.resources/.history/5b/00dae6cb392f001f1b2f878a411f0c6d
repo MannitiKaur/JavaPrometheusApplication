@@ -1,0 +1,48 @@
+package com.app.prommonitor.util;
+
+import java.util.function.Supplier;
+
+import org.springframework.scheduling.annotation.Scheduled;
+
+import com.app.prommonitor.repository.BooksRepository;
+
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.binder.MeterBinder;
+
+public class GaugeMetrics implements MeterBinder{
+
+	 private final MeterRegistry meterRegistry;
+	 private Gauge totalBooksAvailable;
+	 private final BooksRepository booksRepository;
+	 private Supplier<Number> totalBooks;
+
+	
+	@Override
+	public void bindTo(MeterRegistry registry) {
+		
+		// Method booksRepository Total Books Available will be executed every 15s - Prometheus scrape_interval setting
+		totalBooksAvailable = Gauge.builder(MetricUtil.METRIC_BOOKS_IN_STORE_COUNT, totalBooks)
+							  .description("A current number of books in store")
+							  .register(meterRegistry);
+		
+		Metrics.addRegistry(meterRegistry);
+		System.out.println("Total count of books available- "+totalBooks.get());
+	}
+
+	
+	@Scheduled(fixedDelay = 5000)
+	public void measure(){
+	    Metrics.gauge(MetricUtil.METRIC_BOOKS_IN_STORE_COUNT,getTotalBooksCount().get());
+	}
+
+	
+	private Supplier<Number> getTotalBooksCount() {
+		totalBooks = () -> booksRepository.findAll().stream()
+			    .mapToInt(bookEntity -> Integer.parseInt(bookEntity.getQuantity()))
+			    .reduce(0, (a, b) -> a + b);	
+		return totalBooks;
+	}
+	
+}

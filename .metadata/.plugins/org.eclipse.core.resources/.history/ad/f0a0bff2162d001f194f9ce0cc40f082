@@ -1,0 +1,5 @@
+package com.app.prommonitor.repository;
+
+public class BooksRepository {
+
+}

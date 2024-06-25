@@ -1,0 +1,16 @@
+package com.app.prommonitor.mapper;
+
+import com.app.prommonitor.beans.Book;
+import com.app.prommonitor.entity.BooksEntity;
+
+public class BookMapper {
+	
+	public static Book mapToBookDTO(BooksEntity bookEntity) {
+		return new Book(bookEntity.getId(), bookEntity.getTitle(),bookEntity.getAuthor(),bookEntity.getPrice(),bookEntity.getQuantity());
+	}
+
+	public static BooksEntity mapToBookEntity(Book bookDto) {
+		return new BooksEntity(bookDto.getId(), bookDto.getTitle(), bookDto.getAuthor(),bookDto.getPrice(),bookDto.getQuantity());
+	}
+
+}

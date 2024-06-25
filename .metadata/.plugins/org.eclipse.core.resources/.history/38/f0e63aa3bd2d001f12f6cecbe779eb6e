@@ -1,0 +1,5 @@
+package com.app.prommonitor.entity;
+
+public class BooksEntity {
+
+}

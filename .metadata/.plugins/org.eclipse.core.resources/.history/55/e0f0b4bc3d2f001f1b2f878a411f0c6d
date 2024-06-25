@@ -1,0 +1,72 @@
+package com.app.prommonitor.util;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import com.app.prommonitor.entity.BooksEntity;
+import com.app.prommonitor.repository.BooksRepository;
+
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.binder.MeterBinder;
+
+
+@Component
+public class GaugeMetrics implements MeterBinder{
+
+	 @Autowired
+	 private BooksRepository booksRepository;
+	
+	 @Autowired
+	 private MeterRegistry meterRegistry;
+	
+	 private Supplier<Number> totalBooks;
+
+	
+	@Override
+	public void bindTo(MeterRegistry registry) {
+		
+		// Total Books available will be executed every 15s - Prometheus scrape_interval setting
+		Gauge.builder(MetricUtil.METRIC_BOOKS_IN_STORE_COUNT, getTotalBooksCount())
+			 .description("A current number of books in store")
+			 .register(meterRegistry);
+		
+		// Total Books available by author
+		Map<String,String> totalBooksByAuthor = getTotalBooksCountByAuthor();
+		Gauge.builder(MetricUtil.METRIC_BOOKS_IN_STORE_COUNT, getTotalBooksCount())
+		 	 .description("A current number of books in store")
+		 	 .register(meterRegistry);
+		
+		Metrics.addRegistry(meterRegistry);
+		System.out.println("Total count of books available- "+totalBooks.get());
+	}
+
+	
+	@Scheduled(fixedDelay = 5000)
+	public void measure(){
+	    Metrics.gauge(MetricUtil.METRIC_BOOKS_IN_STORE_COUNT,getTotalBooksCount().get());
+	}
+
+	
+	private Supplier<Number> getTotalBooksCount() {
+		totalBooks = () -> booksRepository.findAll().stream()
+			    .mapToInt(bookEntity -> Integer.parseInt(bookEntity.getQuantity()))
+			    .reduce(0, (a, b) -> a + b);	
+		return totalBooks;
+	}
+	
+	
+	private Map<String,String> getTotalBooksCountByAuthor() {
+		return booksRepository.findAll().stream()
+						  .collect(Collectors.toMap(BooksEntity :: getAuthor, BooksEntity :: getQuantity));
+	}
+	
+	
+}

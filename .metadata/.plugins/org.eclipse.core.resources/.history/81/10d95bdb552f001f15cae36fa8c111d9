@@ -1,0 +1,96 @@
+package com.app.prommonitor.util;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+import com.app.prommonitor.entity.BooksEntity;
+import com.app.prommonitor.repository.BooksRepository;
+
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.binder.MeterBinder;
+
+
+@Component
+public class GaugeMetrics implements MeterBinder{
+
+	 @Autowired
+	 private BooksRepository booksRepository;
+	
+	 @Autowired
+	 private MeterRegistry meterRegistry;
+	
+	 private Supplier<Number> totalBooks;
+
+	
+	@Override
+	public void bindTo(MeterRegistry registry) {
+		
+		// Total Books available will be executed every 15s - Prometheus scrape_interval setting
+		Gauge.builder(MetricUtil.METRIC_BOOKS_IN_STORE_COUNT, getTotalBooksCount())
+			 .description("A current number of books in store")
+			 .register(meterRegistry);
+		
+		// Total count of books available by author
+		Map<String,Integer> totalBooksByAuthor = getTotalBooksCountByAuthor();
+		
+		for (Map.Entry<String, Integer> entry : totalBooksByAuthor.entrySet()) {
+		    String key = entry.getKey();
+		    Tags tag = Tags.of("author", key);
+		    Gauge.builder(MetricUtil.METRIC_BOOKS_STORE_COUNT_BY_AUTHOR, totalBooksByAuthor, map -> map.get(key))
+		            .tags(tag)
+		            .register(meterRegistry);
+		}
+		
+		Metrics.addRegistry(meterRegistry);
+		System.out.println("Total count of books available- "+totalBooks.get());
+		System.out.println(totalBooksByAuthor);
+	}
+
+	
+	@Scheduled(fixedDelay = 5000)
+	public void measure(){
+	    Metrics.gauge(MetricUtil.METRIC_BOOKS_IN_STORE_COUNT,getTotalBooksCount().get());
+	}
+
+	
+	private Supplier<Number> getTotalBooksCount() {
+		totalBooks = () -> booksRepository.findAll().stream()
+			    .mapToInt(bookEntity -> Integer.parseInt(bookEntity.getQuantity()))
+			    .reduce(0, (a, b) -> a + b);	
+		return totalBooks;
+	}
+	
+	
+	private Map<String,Integer> getTotalBooksCountByAuthor() {
+		
+		Map<String,Integer> bookTotalByAuthor = new HashMap<>();
+		
+		return booksRepository.findAll().stream().map(bookEntity ->{
+			
+			if(bookTotalByAuthor.containsKey(bookEntity.getAuthor()))
+				bookTotalByAuthor.put(bookEntity.getAuthor(), bookTotalByAuthor.get(bookEntity.getAuthor())+ Integer.parseInt(bookEntity.getQuantity()));
+			else
+				bookTotalByAuthor.put(bookEntity.getAuthor(), Integer.parseInt(bookEntity.getQuantity()));
+			return bookTotalByAuthor;
+		}).findAny().get();
+								
+		
+		booksRepository.findAll().stream().collect(
+							Collectors.toMap(
+									BooksEntity::getAuthor, 
+									booksEntity -> Integer.parseInt(booksEntity.getQuantity()),
+									Integer :: sum
+						));
+		
+	}
+	
+}

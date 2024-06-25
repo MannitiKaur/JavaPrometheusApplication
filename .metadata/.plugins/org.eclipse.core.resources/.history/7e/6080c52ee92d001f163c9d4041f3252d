@@ -1,0 +1,9 @@
+package com.app.prommonitor.exception;
+
+public class BookNotFoundException extends Exception {
+	
+	 public BookNotFoundException(String errorMessage, Throwable err) {
+	        super(errorMessage, err);
+	    }
+
+}

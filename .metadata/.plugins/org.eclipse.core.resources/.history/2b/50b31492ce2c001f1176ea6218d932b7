@@ -1,0 +1,5 @@
+package com.app.prommonitor.controller;
+
+public class AppController {
+
+}
